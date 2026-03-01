@@ -6,7 +6,6 @@ from pymongo import MongoClient
 from datetime import datetime
 
 # --- 1. CONFIGURATION & CLIENTS ---
-# These are pulled from your GitHub Secrets for safety
 NEWSDATA_KEY = os.getenv("NEWSDATA_API_KEY")
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 MONGO_URI = os.getenv("MONGO_URI")
@@ -16,13 +15,12 @@ ai_client = genai.Client(api_key=GEMINI_KEY)
 
 # Initialize Database Client
 db_client = MongoClient(MONGO_URI)
-db = db_client['news_aggregator']  # Database name
-collection = db['articles']        # Collection name
+db = db_client['news_aggregator']
+collection = db['articles']
 
 # --- 2. THE AI BRAIN (Categorization) ---
 def classify_industry(title, snippet):
     prompt = f"Title: {title}\nSnippet: {snippet}"
-    
     try:
         response = ai_client.models.generate_content(
             model="gemini-2.5-flash",
@@ -39,25 +37,24 @@ def classify_industry(title, snippet):
 
 # --- 3. THE CAPTURE & STORE LOGIC ---
 def run_pipeline():
-    # Fetch from NewsData.io
     url = f"https://newsdata.io/api/1/news?apikey={NEWSDATA_KEY}&language=en"
     res = requests.get(url)
     
     if res.status_code != 200:
-        print("Failed to fetch news.")
+        print(f"Failed to fetch news. Status: {res.status_code}")
         return
 
     articles = res.json().get("results", [])
     
     for item in articles:
-        # Check if article already exists in DB to save space/duplicates
+        # Check for duplicates using the link
         if collection.find_one({"link": item['link']}):
             continue 
 
         # Segregate using AI
         industry = classify_industry(item['title'], item.get('description', ''))
         
-        # Prepare final document
+        # Prepare document
         doc = {
             "title": item['title'],
             "link": item['link'],
