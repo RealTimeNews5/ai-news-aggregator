@@ -1,0 +1,21 @@
+from google import genai
+from google.genai import types
+import os
+
+# Initialize the Gemini Client
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+def get_industry_category(title, description):
+    prompt = f"Title: {title}\nDescription: {description}"
+    
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            system_instruction="""You are a news architect. Categorize the news into 
+            EXACTLY one of these: [Tech, Finance, Healthcare, Energy, Sports, Politics]. 
+            Respond with ONLY the category name. If unsure, respond 'General'.""",
+            temperature=0.1 # Keeps the AI focused and consistent
+        )
+    )
+    return response.text.strip()
